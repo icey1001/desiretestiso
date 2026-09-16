@@ -20,7 +20,7 @@ jobs:
           docker system prune -af || true
           df -h
 
-      - name: Build ISO in privileged Fedora 44 container
+      - name: Build Fedora 44 KDE ISO with KIWI
         run: |
           mkdir -p out-ci
           docker run --rm --privileged \
