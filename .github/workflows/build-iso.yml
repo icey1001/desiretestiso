@@ -1,0 +1,51 @@
+name: Build DesireVFIO ISO
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Check out project
+        uses: actions/checkout@v4
+
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/share/dotnet || true
+          docker system prune -af || true
+          df -h
+
+      - name: Build ISO in privileged Fedora 44 container
+        run: |
+          mkdir -p out-ci
+          docker run --rm --privileged \
+            -v /dev:/dev \
+            -v "$PWD:/work" \
+            -w /work \
+            -e OUT=/work/out-ci \
+            -e BUILD=/work/build-ci \
+            -e FEDORA_RELEASE=44 \
+            -e ISO_NAME=DesireVFIO-Fedora-44-KDE-x86_64.iso \
+            fedora:44 \
+            bash -lc 'dnf -y update && chmod +x ./build.sh && ./build.sh'
+
+      - name: Show build outputs
+        run: |
+          find out-ci -maxdepth 4 -type f -printf '%p %s bytes\n' || true
+          test -f out-ci/DesireVFIO-Fedora-44-KDE-x86_64.iso
+          sha256sum out-ci/DesireVFIO-Fedora-44-KDE-x86_64.iso | tee out-ci/DesireVFIO-Fedora-44-KDE-x86_64.iso.sha256
+
+      - name: Upload ISO
+        uses: actions/upload-artifact@v4
+        with:
+          name: DesireVFIO-Fedora-44-KDE-x86_64
+          path: |
+            out-ci/DesireVFIO-Fedora-44-KDE-x86_64.iso
+            out-ci/DesireVFIO-Fedora-44-KDE-x86_64.iso.sha256
+          if-no-files-found: error
+          compression-level: 0
