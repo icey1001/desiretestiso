@@ -1,0 +1,28 @@
+# VFIO / virtualization stack
+qemu-kvm
+libvirt
+libvirt-daemon-kvm
+libvirt-daemon-config-network
+virt-install
+virt-manager
+edk2-ovmf
+swtpm
+driverctl
+
+# Hardware diagnostics
+pciutils
+dmidecode
+fwupd
+mokutil
+usbutils
+jq
+libva-utils
+
+# UI/runtime
+python3
+firefox
+polkit
+
+# Useful guest/host tools
+spice-vdagent
+qemu-guest-agent

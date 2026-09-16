@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Desire VFIO">
+  <defs>
+    <linearGradient id="metal" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.52" stop-color="#cdd0dc"/>
+      <stop offset="1" stop-color="#7f8396"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#ff3bd4"/>
+      <stop offset="1" stop-color="#8b3dff"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="10" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="#080912"/>
+  <path d="M80 132h202c96 0 158 53 158 124s-62 124-158 124H80l55-66h143c53 0 86-22 86-58s-33-58-86-58H80z" fill="url(#metal)"/>
+  <rect x="127" y="205" width="76" height="102" rx="8" fill="url(#metal)"/>
+  <path d="M83 132h199" stroke="url(#edge)" stroke-width="8" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M132 311h72" stroke="#ff3bd4" stroke-width="7" stroke-linecap="round" opacity=".9" filter="url(#glow)"/>
+</svg>

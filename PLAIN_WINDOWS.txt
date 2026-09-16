@@ -1,0 +1,11 @@
+DESIREVFIO - PLAIN WINDOWS USB CREATOR
+
+1. Open windows-usb-creator\Run-DesireUSB.cmd.
+2. The Desire loading screen checks/installs Microsoft .NET Framework 4.8 only if required.
+3. No Docker Desktop, WSL, Hyper-V, VirtualBox, or Linux VM is required on the Windows PC.
+4. The app uses a prebuilt DesireVFIO ISO:
+   - offline: put it in payload\
+   - hosted: set download_url and sha256 in windows-usb-creator\release.ini
+5. Select the USB from the dropdown and flash it.
+
+IMPORTANT: the customized Fedora ISO itself must be prebuilt once on Fedora/CI. Stock Windows cannot natively run Fedora's livemedia-creator toolchain. The Windows app therefore bundles or downloads the finished ISO rather than installing a hidden Linux environment.

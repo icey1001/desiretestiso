@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+set -euo pipefail
+log(){ printf '[desire-vfio] %s\n' "$*" >&2; }
+die(){ log "ERROR: $*"; exit 1; }
+[[ $EUID -eq 0 ]] || die "This helper must run as root."
+cmd=${1:-}
+
+pci_ok(){ [[ ${1:-} =~ ^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-7]$ ]]; }
+hex4(){ printf '%04x' "$((16#${1#0x}))"; }
+
+case "$cmd" in
+  make-test-entry)
+    pci=${2:-}; pci_ok "$pci" || die "Invalid PCI address: $pci"
+    dev="/sys/bus/pci/devices/$pci"; [[ -d "$dev" ]] || die "PCI device not found: $pci"
+    class=$(cat "$dev/class")
+    [[ "$class" == 0x03* ]] || die "Selected device is not a display controller."
+    boot_vga=$(cat "$dev/boot_vga" 2>/dev/null || echo 0)
+    [[ "$boot_vga" != 1 ]] || die "Selected GPU is firmware boot VGA. Set the iGPU/other host GPU as primary before creating a VFIO test entry."
+    slot=${pci%.*}
+    mapfile -t funcs < <(find /sys/bus/pci/devices -maxdepth 1 -type l -name "${slot}.*" -printf '%f\n' 2>/dev/null | sort)
+    [[ ${#funcs[@]} -gt 0 ]] || die "No functions found for $slot"
+    ids=(); vendor=$(cat "$dev/vendor")
+    for f in "${funcs[@]}"; do
+      v=$(cat "/sys/bus/pci/devices/$f/vendor"); d=$(cat "/sys/bus/pci/devices/$f/device")
+      ids+=("$(hex4 "$v"):$(hex4 "$d")")
+    done
+    IFS=,; id_csv="${ids[*]}"; unset IFS
+
+    group_link=$(readlink -f "$dev/iommu_group" 2>/dev/null || true)
+    [[ -n "$group_link" && -d "$group_link" ]] || die "No IOMMU group is active. Enable VT-d/IOMMU first."
+    group_num=${group_link##*/}
+    unrelated=()
+    for n in "$group_link"/devices/*; do
+      a=${n##*/}; [[ "$a" == "$slot".* ]] && continue
+      cls=$(cat "/sys/bus/pci/devices/$a/class")
+      # PCI bridges/root ports are allowed in the group but are never passed through.
+      [[ "$cls" == 0x0604* ]] && continue
+      unrelated+=("$a")
+    done
+    [[ ${#unrelated[@]} -eq 0 ]] || die "IOMMU group $group_num contains unrelated endpoints: ${unrelated[*]}. Refusing automatic passthrough."
+
+    cpu_vendor=$(awk -F: '/vendor_id/{gsub(/ /,"",$2);print $2;exit}' /proc/cpuinfo)
+    case "$cpu_vendor" in
+      GenuineIntel) iommu_arg="intel_iommu=on";;
+      AuthenticAMD) iommu_arg="amd_iommu=on";;
+      *) die "Unsupported CPU vendor: $cpu_vendor";;
+    esac
+    case "$vendor" in
+      0x10de) bl="nouveau,nvidia,nvidia_drm,nvidia_modeset,nvidia_uvm";;
+      0x1002) bl="amdgpu,radeon";;
+      *) bl="";;
+    esac
+
+    mkdir -p /var/lib/desire-vfio /boot/loader/entries
+    # Include VFIO modules in initramfs without binding them in the safe entry.
+    if command -v dracut >/dev/null 2>&1; then
+      dracut -f --add-drivers "vfio vfio_pci vfio_iommu_type1"
+    fi
+    base=$(ls -1t /boot/loader/entries/*.conf 2>/dev/null | grep -v 'desire-vfio-test' | head -n1 || true)
+    [[ -n "$base" ]] || die "No BLS boot entry found under /boot/loader/entries."
+    out="/boot/loader/entries/desire-vfio-test-$(uname -r).conf"
+    cp -f "$base" "$out"
+    sed -i -E 's/^title .*/title Desire VFIO Test (rollback-safe)/' "$out"
+    extra="$iommu_arg rd.driver.pre=vfio-pci vfio-pci.ids=$id_csv"
+    [[ -n "$bl" ]] && extra="$extra rd.driver.blacklist=$bl modprobe.blacklist=$bl"
+    if grep -q '^options ' "$out"; then
+      sed -i -E "s|^options (.*)|options \\1 $extra|" "$out"
+    else
+      echo "options $extra" >> "$out"
+    fi
+    cat > /var/lib/desire-vfio/plan.json <<JSON
+{"guest_gpu":"$pci","slot":"$slot","iommu_group":$group_num,"ids":"$id_csv","test_entry":"$out","kernel":"$(uname -r)"}
+JSON
+    chmod 0644 /var/lib/desire-vfio/plan.json
+    log "Created $out"
+    log "Safe/default entry was not changed. Reboot and manually choose 'Desire VFIO Test'."
+    ;;
+  enable-virtualization)
+    # Enable whichever libvirt daemon model the Fedora release ships.
+    if systemctl list-unit-files | grep -q '^virtqemud.socket'; then
+      systemctl enable --now virtqemud.socket virtnetworkd.socket || true
+    fi
+    if systemctl list-unit-files | grep -q '^libvirtd.socket'; then
+      systemctl enable --now libvirtd.socket || true
+    fi
+    ;;
+  *)
+    echo "Usage: $0 make-test-entry 0000:BB:DD.F | enable-virtualization" >&2
+    exit 2
+    ;;
+esac

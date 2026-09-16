@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Desire VFIO Setup
+Comment=Hardware pre-flight and passthrough setup
+Exec=/usr/local/bin/desire-vfio-ui --autostart
+Icon=desire-vfio
+Terminal=false
+X-KDE-autostart-after=panel
+OnlyShowIn=KDE;

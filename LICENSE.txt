@@ -1,0 +1,3 @@
+Project-specific code in this bundle is provided under the MIT License.
+Fedora, Anaconda, QEMU, libvirt, and other included/upstream components retain their own licenses and trademarks.
+The DesireVFIO name/logo in this prototype is a custom derivative-style visual asset created for this project and is not an official Fedora or Nika asset.

@@ -1,0 +1,196 @@
+#!/usr/bin/env python3
+import json, os, re, shlex, subprocess, threading, time, webbrowser
+from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+from pathlib import Path
+
+ROOT = Path('/usr/local/share/desire-vfio/ui')
+PORT = 41731
+RAW = []
+
+def run(cmd, timeout=6):
+    try:
+        p = subprocess.run(cmd, text=True, capture_output=True, timeout=timeout, check=False)
+        out = (p.stdout or '').strip()
+        err = (p.stderr or '').strip()
+        RAW.append(f"$ {' '.join(shlex.quote(x) for x in cmd)}\n{out}{('\n'+err) if err else ''}".strip())
+        if len(RAW) > 80:
+            del RAW[:-80]
+        return p.returncode, out, err
+    except Exception as e:
+        RAW.append(f"$ {' '.join(cmd)}\nERROR: {e}")
+        return 127, '', str(e)
+
+def read(path, default=''):
+    try: return Path(path).read_text(errors='replace').strip()
+    except Exception: return default
+
+def human(n):
+    try: n=float(n)
+    except: return 'Unknown'
+    units=['B','KiB','MiB','GiB','TiB']
+    i=0
+    while n>=1024 and i<len(units)-1:
+        n/=1024;i+=1
+    return f"{n:.1f} {units[i]}"
+
+def parse_gpus():
+    rc,out,_=run(['lspci','-Dnnk'])
+    if rc: return []
+    blocks=re.split(r'\n(?=[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-7] )', out)
+    gpus=[]
+    for b in blocks:
+        first=b.splitlines()[0] if b else ''
+        if not re.search(r'(VGA compatible controller|3D controller|Display controller)', first, re.I):
+            continue
+        m=re.match(r'(?P<addr>[0-9a-fA-F:.]+)\s+[^:]+:\s+(?P<name>.*?)(?:\s+\[(?P<id>[0-9a-fA-F]{4}:[0-9a-fA-F]{4})\])?(?:\s+\(rev|$)', first)
+        addr=first.split()[0] if first else 'unknown'
+        idm=re.search(r'\[([0-9a-fA-F]{4}:[0-9a-fA-F]{4})\]', first)
+        driver=''
+        dm=re.search(r'Kernel driver in use:\s*(\S+)', b)
+        if dm: driver=dm.group(1)
+        name=re.sub(r'^.*?:\s*','',first)
+        name=re.sub(r'\s+\[[0-9a-fA-F]{4}:[0-9a-fA-F]{4}\].*$','',name)
+        short=name
+        for token in ['NVIDIA Corporation ','Intel Corporation ','Advanced Micro Devices, Inc. [AMD/ATI] ','Advanced Micro Devices, Inc. ']:
+            short=short.replace(token,'')
+        gpus.append({'address':addr,'name':name,'short':short[:90],'id':idm.group(1) if idm else 'unknown','driver':driver or 'unbound','raw':b})
+    return gpus
+
+def parse_disks():
+    rc,out,_=run(['lsblk','-J','-b','-O'])
+    if rc: return []
+    try: data=json.loads(out)
+    except: return []
+    disks=[]
+    for d in data.get('blockdevices',[]):
+        if d.get('type')!='disk': continue
+        children=d.get('children') or []
+        fs=[]
+        for c in children:
+            fs.append((c.get('fstype') or '').lower())
+            for gc in c.get('children') or []: fs.append((gc.get('fstype') or '').lower())
+        windows=any(x in ('ntfs','bitlocker') for x in fs)
+        path='/dev/'+d.get('name','')
+        disks.append({'path':path,'model':(d.get('model') or '').strip(),'serial':(d.get('serial') or '').strip(),'size':d.get('size') or 0,'size_human':human(d.get('size') or 0),'tran':d.get('tran') or '', 'removable':bool(d.get('rm')), 'windows':windows, 'mountpoints':d.get('mountpoints') or []})
+    return disks
+
+def dmidecode(field):
+    for prefix in (['sudo','-n'],[]):
+        rc,out,_=run(prefix+['dmidecode','-s',field])
+        if rc==0 and out: return out.splitlines()[0]
+    return 'Unavailable'
+
+def scan():
+    cpuinfo=read('/proc/cpuinfo')
+    model='Unknown'
+    m=re.search(r'^model name\s*:\s*(.+)$',cpuinfo,re.M)
+    if m:model=m.group(1)
+    flags=''
+    fm=re.search(r'^flags\s*:\s*(.+)$',cpuinfo,re.M)
+    if fm:flags=fm.group(1)
+    virt_flag='vmx' if re.search(r'\bvmx\b',flags) else ('svm' if re.search(r'\bsvm\b',flags) else '')
+    dmar=Path('/sys/firmware/acpi/tables/DMAR').exists() or 'DMAR' in read('/sys/firmware/acpi/tables/dynamic/DMAR')
+    ivrs=Path('/sys/firmware/acpi/tables/IVRS').exists()
+    groups=0
+    p=Path('/sys/kernel/iommu_groups')
+    if p.exists():
+        try: groups=len([x for x in p.iterdir() if x.is_dir()])
+        except: pass
+    uefi=Path('/sys/firmware/efi').exists()
+    bios={'board':f"{dmidecode('baseboard-manufacturer')} {dmidecode('baseboard-product-name')}".strip(),'version':dmidecode('bios-version'),'date':dmidecode('bios-release-date')}
+    secure='Unknown'
+    if shutil_which('mokutil'):
+        _,o,_=run(['mokutil','--sb-state'])
+        secure=o or 'Unknown'
+    gpus=parse_gpus();disks=parse_disks()
+    checks=[]
+    checks.append({'title':'CPU virtualization','detail':f"{virt_flag.upper() or 'VMX/SVM'} {'detected' if virt_flag else 'not detected'}",'level':'good' if virt_flag else 'bad'})
+    checks.append({'title':'UEFI boot','detail':'System is booted in UEFI mode' if uefi else 'Boot the installer in UEFI mode; legacy/CSM is not recommended','level':'good' if uefi else 'bad'})
+    supported=bool(dmar or ivrs or groups)
+    checks.append({'title':'IOMMU capability','detail':('DMAR/IVRS firmware support detected' if supported else 'No DMAR/IVRS table detected; enable VT-d/IOMMU in firmware'),'level':'good' if supported else 'bad'})
+    if len(gpus)>=2:
+        checks.append({'title':'Dual-GPU layout','detail':f'{len(gpus)} display adapters detected; this is ideal for a host-GPU + guest-GPU setup','level':'good'})
+    else:
+        checks.append({'title':'GPU layout','detail':'Only one display adapter was detected. Single-GPU passthrough needs extra care.','level':'warn'})
+    checks.append({'title':'BIOS update','detail':f"Current firmware: {bios['version']} ({bios['date']}). Desire does not force an update; use fwupd/vendor support if an update is available or if IOMMU has firmware-specific faults.",'level':'warn'})
+    if any(d['windows'] for d in disks):
+        checks.append({'title':'Existing Windows data','detail':'At least one disk contains NTFS/BitLocker signatures. Verify the installation target before changing partitions.','level':'warn'})
+    return {'cpu':{'model':model,'virt':bool(virt_flag),'virt_flag':virt_flag},'uefi':uefi,'iommu':{'supported':supported,'dmar':dmar,'ivrs':ivrs,'groups':groups},'bios':bios,'secure_boot':secure,'gpus':gpus,'disks':disks,'checks':checks,'raw':RAW[-18:]}
+
+def shutil_which(name):
+    import shutil
+    return shutil.which(name)
+
+class Handler(SimpleHTTPRequestHandler):
+    def __init__(self,*args,**kwargs): super().__init__(*args,directory=str(ROOT),**kwargs)
+    def log_message(self,*args): pass
+    def json(self,obj,status=200):
+        body=json.dumps(obj).encode();self.send_response(status);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
+    def do_GET(self):
+        if self.path.startswith('/api/scan'):
+            self.json(scan());return
+        return super().do_GET()
+    def do_POST(self):
+        length=int(self.headers.get('Content-Length','0') or 0)
+        payload={}
+        if length:
+            try: payload=json.loads(self.rfile.read(length))
+            except: pass
+        if self.path=='/api/make-vfio-test':
+            pci=str(payload.get('pci',''))
+            if not re.match(r'^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-7]$',pci):
+                self.json({'ok':False,'error':'Invalid PCI address.'},400);return
+            try:
+                p=subprocess.run(['pkexec','/usr/local/libexec/desire-vfio-helper','make-test-entry',pci],text=True,capture_output=True,timeout=180)
+                RAW.append((p.stdout or '')+(p.stderr or ''))
+                if p.returncode==0:
+                    self.json({'ok':True,'message':'VFIO test boot entry created. Reboot and select Desire VFIO Test manually.'});return
+                self.json({'ok':False,'error':(p.stderr or p.stdout or 'Helper failed').strip()},500);return
+            except Exception as e:
+                self.json({'ok':False,'error':str(e)},500);return
+        if self.path=='/api/doctor':
+            try:
+                p=subprocess.run(['/usr/local/bin/desire-vfio-doctor'],text=True,capture_output=True,timeout=30)
+                self.json({'ok':p.returncode==0,'output':(p.stdout or '')+(p.stderr or '')});return
+            except Exception as e:
+                self.json({'ok':False,'error':str(e)},500);return
+        if self.path=='/api/launch-installer':
+            candidates=[['liveinst'],['/usr/bin/liveinst'],['anaconda','--liveinst']]
+            env=os.environ.copy()
+            for cmd in candidates:
+                if shutil_which(cmd[0]) or os.path.exists(cmd[0]):
+                    try:
+                        subprocess.Popen(cmd,env=env,start_new_session=True)
+                        RAW.append(f"Launched installer; selected disk hint: {payload.get('disk','none')}")
+                        self.json({'ok':True});return
+                    except Exception as e:
+                        RAW.append(f"Installer launch failed: {e}")
+            self.json({'ok':False,'error':'Fedora live installer command was not found.'},500);return
+        self.json({'ok':False,'error':'Unknown action'},404)
+
+def main():
+    import sys
+    autostart='--autostart' in sys.argv
+    cmdline=read('/proc/cmdline')
+    live=('rd.live.image' in cmdline) or Path('/run/initramfs/live').exists() or Path('/run/archiso').exists()
+    marker=Path.home()/'.config/desire-vfio/autostarted'
+    if autostart and not live and marker.exists():
+        return
+    if autostart and not live:
+        marker.parent.mkdir(parents=True,exist_ok=True)
+        marker.touch()
+    os.chdir(ROOT)
+    srv=ThreadingHTTPServer(('127.0.0.1',PORT),Handler)
+    t=threading.Thread(target=srv.serve_forever,daemon=True);t.start()
+    url=f'http://127.0.0.1:{PORT}/'
+    time.sleep(.4)
+    browser=os.environ.get('DESIRE_BROWSER','')
+    if browser:
+        subprocess.Popen([browser,url])
+    else:
+        webbrowser.open(url)
+    try:
+        while True: time.sleep(3600)
+    except KeyboardInterrupt: pass
+
+if __name__=='__main__': main()

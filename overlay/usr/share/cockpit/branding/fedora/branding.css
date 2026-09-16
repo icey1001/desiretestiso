@@ -1,0 +1,22 @@
+/* Desire VFIO branding for Fedora/Anaconda Web UI */
+#badge {
+  inline-size: 225px;
+  block-size: 80px;
+  background-image: url("desire-vfio.svg");
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+#brand::before { content: "Desire VFIO"; }
+.anaconda {
+  --brand-default-light: #ff72df;
+  --brand-default: #b44cff;
+  --brand-default-dark: #7b2dcf;
+  --pf-t--global--color--brand--default: var(--brand-default);
+  --pf-t--global--color--brand--hover: var(--brand-default-light);
+}
+.anaconda .logo {
+  background-image: url("desire-vfio.svg");
+}
+.pf-v6-c-page, .pf-v6-c-background-image {
+  background-color: #0a0912 !important;
+}

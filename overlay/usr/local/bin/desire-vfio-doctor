@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -u
+printf '=== Desire VFIO Doctor ===\n'
+printf '\n-- Kernel --\n'; uname -a
+printf '\n-- Command line --\n'; cat /proc/cmdline
+printf '\n-- CPU virtualization --\n'; grep -m1 -E '^model name|^Hardware' /proc/cpuinfo; grep -m1 -oE '\b(vmx|svm)\b' /proc/cpuinfo || true
+printf '\n-- IOMMU --\n'; dmesg 2>/dev/null | grep -Ei 'DMAR|IOMMU|AMD-Vi' | tail -n 50 || true
+printf '\n-- IOMMU groups --\n'; find /sys/kernel/iommu_groups -type l 2>/dev/null | sort -V || true
+printf '\n-- GPUs and related functions --\n'; lspci -nnk | grep -A4 -E 'VGA|3D|Display|Audio|USB' || true
+printf '\n-- Boot VGA --\n'; for d in /sys/bus/pci/devices/*; do [[ -e "$d/boot_vga" ]] || continue; [[ $(cat "$d/boot_vga") == 1 ]] && echo "${d##*/} boot_vga=1"; done
+printf '\n-- libvirt --\n'; systemctl is-active libvirtd.socket 2>/dev/null || true; systemctl is-active virtqemud.socket 2>/dev/null || true

@@ -1,0 +1,6 @@
+Put the prebuilt DesireVFIO .iso in this folder to make the Windows USB Creator completely offline and self-contained.
+
+Recommended filename:
+DesireVFIO-Fedora-44-KDE-x86_64.iso
+
+The Windows app will auto-detect any .iso in this payload folder.

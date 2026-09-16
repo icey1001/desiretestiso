@@ -1,0 +1,213 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Name="MainWindow"
+        Title="Desire USB Creator"
+        Width="1120" Height="790" MinWidth="980" MinHeight="700"
+        WindowStartupLocation="CenterScreen"
+        Background="#080812" Foreground="#F6F4FF"
+        FontFamily="Segoe UI">
+  <Window.Resources>
+    <LinearGradientBrush x:Key="AccentBrush" StartPoint="0,0" EndPoint="1,0">
+      <GradientStop Color="#8B46FF" Offset="0"/>
+      <GradientStop Color="#FF3BCF" Offset="1"/>
+    </LinearGradientBrush>
+    <SolidColorBrush x:Key="PanelBrush" Color="#151425"/>
+    <SolidColorBrush x:Key="Panel2Brush" Color="#10101C"/>
+    <SolidColorBrush x:Key="LineBrush" Color="#2A2840"/>
+    <SolidColorBrush x:Key="MutedBrush" Color="#A4A0BA"/>
+    <Style TargetType="Button">
+      <Setter Property="Foreground" Value="#F6F4FF"/>
+      <Setter Property="Background" Value="#171526"/>
+      <Setter Property="BorderBrush" Value="#35314A"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="13,9"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Padding" Value="18,12"/>
+    </Style>
+    <Style TargetType="TextBox">
+      <Setter Property="Foreground" Value="#F6F4FF"/>
+      <Setter Property="Background" Value="#0E0E19"/>
+      <Setter Property="BorderBrush" Value="#35314A"/>
+      <Setter Property="Padding" Value="10,8"/>
+      <Setter Property="CaretBrush" Value="#FF3BCF"/>
+    </Style>
+    <Style TargetType="ComboBox">
+      <Setter Property="Foreground" Value="#11111B"/>
+      <Setter Property="Background" Value="#F6F4FF"/>
+      <Setter Property="BorderBrush" Value="#35314A"/>
+      <Setter Property="Padding" Value="8,6"/>
+    </Style>
+    <Style TargetType="CheckBox">
+      <Setter Property="Foreground" Value="#D8D3E6"/>
+    </Style>
+  </Window.Resources>
+
+  <Grid x:Name="RootGrid">
+    <Canvas x:Name="GlowCanvas" IsHitTestVisible="False" Panel.ZIndex="0">
+      <Ellipse x:Name="CursorGlow" Width="92" Height="92" Opacity="0.34">
+        <Ellipse.Fill>
+          <RadialGradientBrush>
+            <GradientStop Color="#77FF3BCF" Offset="0"/>
+            <GradientStop Color="#338B46FF" Offset="0.45"/>
+            <GradientStop Color="#008B46FF" Offset="1"/>
+          </RadialGradientBrush>
+        </Ellipse.Fill>
+      </Ellipse>
+      <Ellipse x:Name="CursorDot" Width="5" Height="5" Fill="#F9D8FF"/>
+    </Canvas>
+
+    <Grid x:Name="ScaleRoot" Margin="26" Panel.ZIndex="1">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*"/>
+        <RowDefinition Height="210"/>
+      </Grid.RowDefinitions>
+
+      <Grid Grid.Row="0" Margin="0,0,0,18">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <Border Width="56" Height="56" CornerRadius="14" Background="#0E0E19" BorderBrush="#342A49" BorderThickness="1" Margin="0,0,14,0">
+            <Image x:Name="LogoImage" Stretch="Uniform" Margin="6"/>
+          </Border>
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="DESIRE" Foreground="#FF3BCF" FontSize="11" FontWeight="Bold"/>
+            <TextBlock Text="USB Creator" FontSize="26" FontWeight="SemiBold"/>
+            <TextBlock Text="Prepare and flash the DesireVFIO installer on plain Windows" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,2,0,0"/>
+          </StackPanel>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+          <CheckBox x:Name="DebugToggle" Content="Debug" VerticalAlignment="Center" Margin="0,0,18,0"/>
+          <TextBlock Text="Zoom" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+          <Slider x:Name="ZoomSlider" Width="110" Minimum="0.85" Maximum="1.25" Value="1" SmallChange="0.05" LargeChange="0.1"/>
+        </StackPanel>
+      </Grid>
+
+      <Grid Grid.Row="1">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="2*"/>
+          <ColumnDefinition Width="1.05*"/>
+        </Grid.ColumnDefinitions>
+
+        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Margin="0,0,12,0">
+          <StackPanel>
+            <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="18" Padding="20" Margin="0,0,0,14">
+              <StackPanel>
+                <TextBlock Text="INSTALLER IMAGE" Foreground="#FF3BCF" FontSize="10" FontWeight="Bold"/>
+                <TextBlock Text="DesireVFIO ISO" FontSize="19" FontWeight="SemiBold" Margin="0,4,0,5"/>
+                <TextBlock Text="The app uses a bundled DesireVFIO image or downloads the prebuilt image from the configured release source. No Docker, WSL, or Linux build environment is required on this PC." Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" FontSize="12" Margin="0,0,0,12"/>
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+                  <TextBox x:Name="IsoPathBox" Height="38" VerticalContentAlignment="Center"/>
+                  <Button x:Name="BrowseIsoButton" Grid.Column="1" Content="Browse" Margin="9,0,0,0"/>
+                  <Button x:Name="BuildIsoButton" Grid.Column="2" Content="Get ISO" Margin="9,0,0,0"/>
+                </Grid>
+                <TextBlock x:Name="IsoStatusText" Text="Checking ISO..." Foreground="#FFC45E" FontSize="11" Margin="0,9,0,0"/>
+              </StackPanel>
+            </Border>
+
+            <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="18" Padding="20" Margin="0,0,0,14">
+              <StackPanel>
+                <TextBlock Text="TARGET DEVICE" Foreground="#FF3BCF" FontSize="10" FontWeight="Bold"/>
+                <TextBlock Text="Select a USB drive" FontSize="19" FontWeight="SemiBold" Margin="0,4,0,5"/>
+                <TextBlock Text="Only USB disks are shown. Windows system/boot disks are excluded. The selected USB will be completely erased." Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" FontSize="12" Margin="0,0,0,12"/>
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+                  <ComboBox x:Name="UsbCombo" Height="40" VerticalContentAlignment="Center" DisplayMemberPath="DisplayName"/>
+                  <Button x:Name="RefreshUsbButton" Grid.Column="1" Content="Refresh" Margin="9,0,0,0"/>
+                </Grid>
+                <Border Background="#0E0E19" BorderBrush="#29263C" BorderThickness="1" CornerRadius="12" Padding="13" Margin="0,12,0,0">
+                  <TextBlock x:Name="UsbDetailsText" Text="No USB selected." Foreground="#C9C5D7" FontFamily="Consolas" FontSize="11" TextWrapping="Wrap"/>
+                </Border>
+              </StackPanel>
+            </Border>
+
+            <Border Background="#15111F" BorderBrush="#5A284A" BorderThickness="1" CornerRadius="18" Padding="20">
+              <StackPanel>
+                <TextBlock Text="FINAL SAFETY CHECK" Foreground="#FF657E" FontSize="10" FontWeight="Bold"/>
+                <TextBlock Text="The selected USB will be overwritten byte-for-byte." FontSize="17" FontWeight="SemiBold" Margin="0,4,0,6"/>
+                <TextBlock Text="Before writing, Desire re-checks that the target is still a USB device, is not the Windows system disk, and is large enough for the ISO. You must confirm the exact model, size, and disk number." Foreground="#C8B8C6" TextWrapping="Wrap" FontSize="12"/>
+                <CheckBox x:Name="VerifyCheck" Content="Verify the image after writing (recommended)" IsChecked="True" Margin="0,12,0,0"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Column="1" Margin="12,0,0,0">
+          <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="18" Padding="20" Margin="0,0,0,14">
+            <StackPanel>
+              <TextBlock Text="PREFLIGHT" Foreground="#FF3BCF" FontSize="10" FontWeight="Bold"/>
+              <TextBlock Text="Ready check" FontSize="19" FontWeight="SemiBold" Margin="0,4,0,12"/>
+              <TextBlock x:Name="AdminStatus" Text="● Administrator" Foreground="#56E0A0" Margin="0,0,0,7"/>
+              <TextBlock x:Name="IsoReadyStatus" Text="● ISO not found" Foreground="#FFC45E" Margin="0,0,0,7"/>
+              <TextBlock x:Name="UsbReadyStatus" Text="● Select a USB" Foreground="#FFC45E" Margin="0,0,0,7"/>
+              <TextBlock x:Name="SizeReadyStatus" Text="● Size check pending" Foreground="#A4A0BA" Margin="0,0,0,7"/>
+              <TextBlock x:Name="SystemDiskStatus" Text="● System disk protection active" Foreground="#56E0A0"/>
+            </StackPanel>
+          </Border>
+
+          <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="18" Padding="20" Margin="0,0,0,14">
+            <StackPanel>
+              <TextBlock Text="ONE-CLICK FLOW" Foreground="#FF3BCF" FontSize="10" FontWeight="Bold"/>
+              <TextBlock Text="What Flash does" FontSize="18" FontWeight="SemiBold" Margin="0,4,0,10"/>
+              <TextBlock Text="1  Uses the bundled DesireVFIO ISO, or downloads the prebuilt release if missing." Foreground="#C9C5D7" TextWrapping="Wrap" Margin="0,0,0,8"/>
+              <TextBlock Text="2  Re-validates and dismounts only the selected USB." Foreground="#C9C5D7" TextWrapping="Wrap" Margin="0,0,0,8"/>
+              <TextBlock Text="3  Writes the hybrid ISO directly to the USB." Foreground="#C9C5D7" TextWrapping="Wrap" Margin="0,0,0,8"/>
+              <TextBlock Text="4  Optionally verifies SHA-256 against the bytes on the USB." Foreground="#C9C5D7" TextWrapping="Wrap"/>
+            </StackPanel>
+          </Border>
+
+          <Button x:Name="FlashButton" Content="FLASH DESIREVFIO" Style="{StaticResource PrimaryButton}" FontSize="14" Height="50"/>
+          <ProgressBar x:Name="ProgressBar" Height="10" Minimum="0" Maximum="100" Value="0" Foreground="#B54CFF" Background="#181628" Margin="0,14,0,7"/>
+          <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <TextBlock x:Name="StageText" Text="Ready" Foreground="#C9C5D7" FontSize="11"/>
+            <TextBlock x:Name="ProgressText" Grid.Column="1" Text="0%" Foreground="#A4A0BA" FontSize="11"/>
+          </Grid>
+        </StackPanel>
+      </Grid>
+
+      <Border Grid.Row="2" Background="#080812" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="16" Margin="0,18,0,0">
+        <Grid>
+          <Grid.RowDefinitions><RowDefinition Height="38"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <Border Background="#11101D" CornerRadius="16,16,0,0" Padding="12,0">
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Ellipse Width="7" Height="7" Fill="#56E0A0" Margin="0,0,8,0"/>
+                <TextBlock Text="Desire log" VerticalAlignment="Center" Foreground="#D9D5E8" FontSize="11"/>
+              </StackPanel>
+              <Button x:Name="ClearLogButton" Grid.Column="1" Content="Clear" Padding="9,4" Margin="0,5"/>
+            </Grid>
+          </Border>
+          <ScrollViewer Grid.Row="1" x:Name="LogScroller" VerticalScrollBarVisibility="Auto">
+            <TextBox x:Name="LogBox" Background="Transparent" BorderThickness="0" Foreground="#BDB8CC" FontFamily="Consolas" FontSize="11" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" Padding="12"/>
+          </ScrollViewer>
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
+</Window>

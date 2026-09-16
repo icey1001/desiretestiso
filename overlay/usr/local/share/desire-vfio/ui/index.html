@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Desire VFIO Setup</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="cursorGlow"></div>
+  <div id="cursorDot"></div>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand"><img src="logo.svg" alt="Desire"/><div><b>Desire</b><span>VFIO Setup</span></div></div>
+      <nav>
+        <button class="nav active" data-page="overview">Overview</button>
+        <button class="nav" data-page="hardware">Hardware</button>
+        <button class="nav" data-page="storage">Storage</button>
+        <button class="nav" data-page="passthrough">Passthrough</button>
+        <button class="nav" data-page="install">Install</button>
+      </nav>
+      <div class="sidebar-foot">Fedora KDE • Safe-first VFIO</div>
+    </aside>
+
+    <main>
+      <header>
+        <div>
+          <div class="eyebrow">SYSTEM PRE-FLIGHT</div>
+          <h1 id="pageTitle">Ready check</h1>
+        </div>
+        <div class="toolbar">
+          <button id="zoomOut" title="Smaller text">A−</button>
+          <span id="zoomValue">100%</span>
+          <button id="zoomIn" title="Larger text">A+</button>
+          <label class="switch"><input id="debugToggle" type="checkbox"><span></span></label>
+          <small>Debug</small>
+        </div>
+      </header>
+
+      <section class="page active" id="overview">
+        <div class="hero card">
+          <div>
+            <div class="statusline"><span id="overallDot" class="dot pending"></span><span id="overallText">Scanning hardware…</span></div>
+            <h2>Passthrough without guessing.</h2>
+            <p>The installer checks virtualization, firmware mode, GPU layout, IOMMU support, and storage before anything destructive happens.</p>
+            <div class="actions"><button class="primary" id="rescanBtn">Run full scan</button><button class="ghost" data-goto="hardware">View hardware</button></div>
+          </div>
+          <div class="orb"><div class="orb-ring"></div><img src="logo.svg" alt=""/></div>
+        </div>
+        <div class="grid3" id="summaryCards"></div>
+        <div class="card recommendations"><h3>Recommendations</h3><div id="recommendations"></div></div>
+      </section>
+
+      <section class="page" id="hardware">
+        <div class="grid2"><div class="card"><h3>CPU & firmware</h3><div id="cpuInfo" class="kv"></div></div><div class="card"><h3>Graphics</h3><div id="gpuInfo"></div></div></div>
+        <div class="card"><h3>IOMMU groups</h3><div id="iommuInfo"></div></div>
+      </section>
+
+      <section class="page" id="storage">
+        <div class="card"><h3>Select installation disk</h3><p class="muted">Nothing is erased here. Desire only marks your choice and hands installation to Fedora's installer after a final confirmation.</p><div id="diskList"></div></div>
+        <div class="card danger-card"><h3>Destructive-action guard</h3><p id="diskGuard">Choose a disk to see the safety check.</p></div>
+      </section>
+
+      <section class="page" id="passthrough">
+        <div class="card"><h3>GPU passthrough plan</h3><p class="muted">The installed system uses a safe boot entry first. A separate VFIO test entry is generated only after the host GPU and IOMMU group are verified.</p><div id="passthroughPlan"></div><div class="actions"><button class="primary" id="makeTestBtn">Generate VFIO test boot</button><button class="ghost" id="doctorBtn">Run doctor</button></div></div>
+        <div class="card"><h3>What will be preinstalled</h3><div class="chips"><span>QEMU/KVM</span><span>libvirt</span><span>virt-manager</span><span>OVMF</span><span>swtpm</span><span>driverctl</span><span>VirtIO tooling</span></div></div>
+      </section>
+
+      <section class="page" id="install">
+        <div class="card install-card"><div><h2>Install Fedora KDE</h2><p>Use the normal Fedora installer for partitioning and account setup. Desire remains available for hardware checks and post-install VFIO setup.</p><div id="installWarnings"></div></div><button class="primary big" id="installBtn">Open installer</button></div>
+        <div class="card"><h3>After installation</h3><p>The first-boot assistant will re-scan hardware and can generate a rollback-safe VFIO test boot entry. It will not make VFIO the default until the test boot succeeds.</p></div>
+      </section>
+
+      <section class="log-card">
+        <div class="log-head"><div><span class="pulse"></span><b>Setup log</b></div><button id="clearLog">Clear</button></div>
+        <pre id="log"></pre>
+      </section>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

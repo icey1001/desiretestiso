@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Desire VFIO Setup
+Comment=Hardware pre-flight and passthrough setup
+Exec=/usr/local/bin/desire-vfio-ui
+Icon=desire-vfio
+Terminal=false
+Categories=System;Settings;
